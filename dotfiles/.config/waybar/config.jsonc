@@ -3,7 +3,7 @@
   "layer": "top",
   "position": "top",
   "spacing": 6,
-  "height": 36,
+  "height": 43,
   "margin":"8 8 0 8",
   "modules-left": ["custom/omarchy", "clock", "custom/update","custom/updates_all","custom/media"],
   "modules-center": ["hyprland/workspaces", "custom/screenrecording-indicator"],
