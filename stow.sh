@@ -1,0 +1,1 @@
+stow -d ~/Projects/omarchyrice/ -t ~/ dotfiles
