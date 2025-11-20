@@ -1,22 +1,34 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Repo updates via pacman
-repo_count=$(pacman -Qu --quiet 2>/dev/null | wc -l)
+# Waybar updates module
+# Requires:
+#   pacman-contrib  (for checkupdates)
+# Optional:
+#   yay or paru     (for AUR updates)
 
-# AUR updates via yay/paru (if installed)
+set -o pipefail
+
+repo_updates=0
+aur_updates=0
+
+# --- Official repo updates (pacman) ---
+if command -v checkupdates &>/dev/null; then
+  # checkupdates returns 2 if no updates, 0 if updates, 1 on error
+  mapfile -t repo_list < <(checkupdates 2>/dev/null)
+  repo_updates=${#repo_list[@]}
+fi
+
+# --- AUR updates (yay / paru, first found) ---
 if command -v yay &>/dev/null; then
-    aur_count=$(yay -Qu --aur --quiet 2>/dev/null | wc -l)
+  aur_updates=$(yay -Qua 2>/dev/null | wc -l)
 elif command -v paru &>/dev/null; then
-    aur_count=$(paru -Qu --aur --quiet 2>/dev/null | wc -l)
-else
-    aur_count=0
+  aur_updates=$(paru -Qua 2>/dev/null | wc -l)
 fi
 
-total=$((repo_count + aur_count))
+total=$((repo_updates + aur_updates))
 
-if [ "$total" -gt 0 ]; then
-    echo "{\"text\": \"$total\", \"class\": \"updates-available\"}"
+if (( total > 0 )); then
+  echo "{\"text\":\"$total\",\"class\":\"updates-available\"}"
 else
-    echo "{\"text\": \"0\", \"class\": \"updates-none\"}"
+  echo "{\"text\":\"0\",\"class\":\"updates-none\"}"
 fi
-
