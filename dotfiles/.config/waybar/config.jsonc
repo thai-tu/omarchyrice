@@ -173,10 +173,11 @@
     "tooltip-format": "{alt}"
   },
     "custom/updates_all": {
-  "exec": "/home/bao/.config/waybar/scripts/updates.sh",
-  "interval": 300,
-  "return-type": "json",
   "format": "  {text}",
-  "on-click": "alacritty -e sudo pacman -Syu"
+  "exec": "/home/bao/.config/waybar/scripts/updates.sh",
+  "on-click": "alacritty -e sudo pacman -Syu && pkill -RTMIN+8 waybar",
+  "return-type": "json",
+  "signal": 7,
+  "interval": 300
   }
 }

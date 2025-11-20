@@ -49,7 +49,7 @@ window#waybar {
     background: @accent;
     color: @background;
     min-width: 15px;
-    padding-left: 9px;
+    padding-left: 7px;
 }
 
 #workspaces button:hover {
@@ -127,6 +127,8 @@ window#waybar {
 
 #network.disconnected {
   color: #e06c75; /* critical */
+  padding-right: 16px;
+
 }
 
 #custom-power {
