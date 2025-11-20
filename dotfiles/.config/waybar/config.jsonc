@@ -173,7 +173,7 @@
     "tooltip-format": "{alt}"
   },
     "custom/updates_all": {
-  "exec": "~/.config/waybar/scripts/updates.sh",
+  "exec": "/home/bao/.config/waybar/scripts/updates.sh",
   "interval": 300,
   "return-type": "json",
   "format": "  {text}",
