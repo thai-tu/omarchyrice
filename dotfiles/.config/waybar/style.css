@@ -109,6 +109,7 @@ window#waybar {
 #battery.charging,
 #battery.plugged {
   color: #6bbf7a; /* accent */
+  padding-right: 10px;
 }
 
 #battery.warning:not(.charging) {
@@ -148,7 +149,8 @@ tooltip {
   font-size: 10px;
   background-color: alpha(@background, 0.95);
   border-radius:12px;
-  padding: 6px 12px;
+  padding-right: 12.5px;
+  padding-left: 10px;
   color: @foreground;
 }
 
