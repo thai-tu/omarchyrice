@@ -103,7 +103,7 @@ window#waybar {
 
 #battery {
   padding-left: 8px;
-  padding-right: 9px;
+  padding-right: 9.5px;
 }
 
 #battery.charging,
