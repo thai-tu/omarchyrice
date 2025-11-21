@@ -162,6 +162,8 @@ tooltip {
 
 #custom-screenrecording-indicator.active {
   color: #a55555;
+  padding-right: 11px;
+  padding-left: 10px;
 }
 
 #custom-updates_all {
