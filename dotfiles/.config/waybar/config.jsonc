@@ -150,7 +150,7 @@
     "return-type": "json"
   },
   "custom/power":{
-    "format": " ",
+    "format": "",
     "tooltip-format": "System Menu",
     "on-click": "omarchy-menu system"
   },
