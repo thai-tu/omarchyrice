@@ -177,11 +177,7 @@
   "exec": "/home/bao/.config/waybar/scripts/updates.sh",
   "on-click": "alacritty -e sudo pacman -Syu && for pid in $(pgrep waybar); do kill -RTMIN+8 $pid; done",
   "return-type": "json",
-<<<<<<< HEAD
   "signal": 1,
-=======
-  "signal": 2,
->>>>>>> 4087432 (test)
   "interval": 300
   }
 }
