@@ -137,8 +137,8 @@ window#waybar {
 }
 
 #custom-expand-icon {
-  padding-left: 12px;
-  padding-right: 14px;
+  padding-left: 9px;
+  padding-right: 11px;
 }
 
 tooltip {
@@ -193,4 +193,9 @@ tooltip {
 
 #temperature.critical {
   color: #e06c75;     /* hot (85°C+) */
+}
+
+#bluetooth {
+  padding-left: 10px;
+  padding-right: 12.5px;
 }
