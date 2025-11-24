@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import subprocess
 import sys
 from typing import List, Optional
+
+STATE_FILE = "/tmp/waybar_mpris_state.json"
 
 
 # ---------------------------------------------------------
@@ -18,8 +21,35 @@ def run_playerctl(args: List[str]) -> str:
         return ""
 
 
+def load_last_player() -> Optional[str]:
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("player") or None
+    except Exception:
+        return None
+
+
+def save_last_player(name: str) -> None:
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump({"player": name}, f)
+    except Exception:
+        # Not critical if this fails
+        pass
+
+
 def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]:
-    """Pick the best player name: playing > first available, honour filters."""
+    """
+    Pick the active player with memory:
+
+      - Prefer a currently Playing player.
+          - If the last active player is also Playing, keep it.
+      - If nobody is Playing:
+          - If the last active player still exists and is Paused/Playing, keep it.
+          - Otherwise prefer a Paused player.
+          - Otherwise fall back to the first available.
+    """
     excluded_set = set(p for p in excluded if p)
 
     names_str = run_playerctl(["--list-all"])
@@ -37,14 +67,39 @@ def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]
     if not names:
         return None
 
-    # Prefer a player that is currently Playing
-    for name in names:
-        status = run_playerctl(["--player", name, "status"])
-        if status == "Playing":
-            return name
+    last_player = load_last_player()
+    if last_player not in names:
+        last_player = None
 
-    # Otherwise first available
-    return names[0]
+    # Cache statuses once
+    statuses = {name: run_playerctl(["--player", name, "status"]) for name in names}
+
+    playing = [n for n in names if statuses.get(n) == "Playing"]
+    paused = [n for n in names if statuses.get(n) == "Paused"]
+
+    chosen: Optional[str] = None
+
+    if playing:
+        # If the last player is still Playing, keep it
+        if last_player and statuses.get(last_player) == "Playing":
+            chosen = last_player
+        else:
+            # New media started → pick the first Playing
+            chosen = playing[0]
+    else:
+        # No Playing players
+        if last_player and statuses.get(last_player) in ("Playing", "Paused"):
+            # Stay on the previous media while it's at least Paused
+            chosen = last_player
+        elif paused:
+            chosen = paused[0]
+        else:
+            chosen = names[0]
+
+    if chosen:
+        save_last_player(chosen)
+
+    return chosen
 
 
 def get_player_info(player_name: str):
@@ -89,9 +144,13 @@ def build_output(
         sys.stdout.flush()
         sys.exit(0)
 
-    # If we don't have a useful status, or it's neither Playing nor Paused,
-    # hide the module instead of showing a stop icon.
-    if status not in ("Playing", "Paused"):
+    # Normalise status
+    normalized_status = status
+    if status == "Stopped":
+        normalized_status = "Paused"
+
+    # Only show while Playing or Paused
+    if normalized_status not in ("Playing", "Paused"):
         sys.stdout.write("\n")
         sys.stdout.flush()
         sys.exit(0)
@@ -116,13 +175,11 @@ def build_output(
         track_info = ""
 
     # Icons (Nerd Font)
-    if status == "Playing":
+    if normalized_status == "Playing":
         icon = ""
-    elif status == "Paused":
+    elif normalized_status == "Paused":
         icon = ""
     else:
-        # We should not get here because of the earlier guard,
-        # but keep a fallback just in case.
         icon = ""
 
     # If somehow we have no icon and no text, hide the module
@@ -133,7 +190,11 @@ def build_output(
 
     text = f"{icon}  {track_info}" if track_info else icon
 
-    css_class = f"custom-{player_name} {status.lower()}" if status else f"custom-{player_name}"
+    css_class = (
+        f"custom-{player_name} {normalized_status.lower()}"
+        if normalized_status
+        else f"custom-{player_name}"
+    )
 
     return {
         "text": text,

@@ -91,6 +91,7 @@
   "clock": {
     "format": "{:%a %d %b %H:%M}",
     "on-click": "chromium --app=https://calendar.google.com",
+    "tooltip": false,
     "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
   },
   "network": {
@@ -172,16 +173,14 @@
     "spacing": 17
   },
   "custom/media": {
-    "format": "{text}",
-    "escape": true,
+    "format": "{}",
+    "exec": "~/.config/waybar/scripts/mediaplayer.py",
     "return-type": "json",
+    "interval": 1,      // or 0.5 if you want it very snappy
     "max-length": 40,
-    "on-click": "playerctl play-pause",
-    "on-click-right": "playerctl stop",
-    "exec": "$HOME/.config/waybar/scripts/mediaplayer.py", // remove 2>/dev/null while testing
-    "restart-interval": 0,
-    "tooltip": true,
-    "tooltip-format": "{alt}"
+    "on-click": "~/.config/waybar/scripts/playerctl-wrapper.sh play-pause",
+    "on-click-right": "~/.config/waybar/scripts/playerctl-wrapper.sh next",
+    "on-click-middle": "~/.config/waybar/scripts/playerctl-wrapper.sh previous"
   },
     "custom/updates_all": {
   "format": "  {text}",
