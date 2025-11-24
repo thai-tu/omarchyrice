@@ -1,13 +1,25 @@
 @import "../omarchy/current/theme/waybar.css";
 
+/* ============================================
+   Global Styles
+   ============================================ */
 * {
   color: @foreground;
-
   border: none;
   min-height: 0;
-  padding:1px;
+  padding: 1px;
   font-family: 'CaskaydiaMono Nerd Font';
   font-size: 16px;
+}
+
+/* ============================================
+   Layout & Window
+   ============================================ */
+window#waybar {
+  background-color: alpha(@background, 0.0);
+  border-radius: 16px;
+  margin: 8px 8px 0 8px;
+  padding: 4px 6px;
 }
 
 .modules-left {
@@ -18,45 +30,43 @@
   margin-right: 8px;
 }
 
-window#waybar {
-    background-color: alpha(@background, 0.0);
-    border-radius: 16px;
-    margin: 8px 8px 0 8px;
-    padding: 4px 6px;
-}
-
+/* ============================================
+   Workspaces
+   ============================================ */
 #workspaces {
-    background-color: alpha(@background, 0.95);
-    border-radius: 12px;
-    padding: 4px 6px;
-    margin: 0 6px;
+  background-color: alpha(@background, 0.95);
+  border-radius: 12px;
+  padding: 4px 6px;
+  margin: 0 6px;
 }
 
 #workspaces button {
-    all: initial;
-    padding: 2px 10px;
-    margin: 0 2px;
-    min-width: 9px;
-    border-radius: 999px;
-    color: @foreground;
+  all: initial;
+  padding: 2px 10px;
+  margin: 0 2px;
+  min-width: 9px;
+  border-radius: 999px;
+  color: @foreground;
 }
 
 #workspaces button.empty {
-    opacity: 0.5;
+  opacity: 0.5;
 }
 
 #workspaces button.active {
-    background: @accent;
-    color: @background;
-    min-width: 15px;
-    padding-left: 7px;
+  background: @accent;
+  color: @background;
+  min-width: 15px;
+  padding-left: 7px;
 }
 
 #workspaces button:hover {
-    background: alpha(@accent, 0.35);
+  background: alpha(@accent, 0.35);
 }
 
-/* Pill modules – add/remove IDs here as your layout changes */
+/* ============================================
+   Module Pills (Base Styling)
+   ============================================ */
 #clock,
 #pulseaudio,
 #network,
@@ -72,68 +82,36 @@ window#waybar {
 #group-tray-expander,
 #custom-expand-icon,
 #custom-media,
-#custom-power {
-    background-color: alpha(@background, 0.95);
-    border-radius: 12px;
-    padding: 9px 10px;
-    margin: 0 0px;
+#custom-power,
+#custom-updates_all {
+  background-color: alpha(@background, 0.95);
+  border-radius: 12px;
+  padding: 9px 10px;
+  margin: 0 0px;
 }
 
-/* Make the status bits a bit bolder */
+/* Bold status modules */
 #pulseaudio,
 #network,
 #bluetooth,
 #cpu,
 #battery {
-    font-weight: 500;
+  font-weight: 500;
 }
 
-/* Tighten some specific ones */
+/* ============================================
+   Module-Specific Adjustments
+   ============================================ */
 #custom-omarchy {
-    padding-left: 8px;
-    padding-right: 14px;
+  padding-left: 8px;
+  padding-right: 14px;
 }
 
 #custom-power {
   margin-right: 0px;
   padding-left: 8px;
   padding-right: 12.5px;
-  color: #ff8a80;
-}
-
-#battery {
-  padding-left: 8px;
-  padding-right: 9.5px;
-}
-
-#battery.charging,
-#battery.plugged {
-  color: #6bbf7a; /* accent */
-  padding-right: 10px;
-}
-
-#battery.warning:not(.charging) {
-  color: #e5c07b; /* warning */
-}
-
-#battery.critical:not(.charging) {
-  background-color: #e06c75; /* critical */
-  color: #2a3a31;           /* background */
-  border-radius: 8px;
-}
-
-#pulseaudio.muted {
-  color: #e06c75; /* critical */
-}
-
-#network.disconnected {
-  color: #e06c75; /* critical */
-  padding-right: 16px;
-
-}
-
-#custom-power {
-  color: #e06c75; /* critical */
+  color: #e06c75;
 }
 
 #custom-expand-icon {
@@ -141,23 +119,87 @@ window#waybar {
   padding-right: 11px;
 }
 
-tooltip {
-  padding: 2px;
+#battery {
+  padding-left: 8px;
+  padding-right: 9.5px;
+}
+
+#bluetooth {
+  padding-left: 10px;
+  padding-right: 12.5px;
 }
 
 #custom-update {
   font-size: 10px;
   background-color: alpha(@background, 0.95);
-  border-radius:12px;
+  border-radius: 12px;
   padding-right: 12.5px;
   padding-left: 10px;
   color: @foreground;
 }
 
-.hidden {
-  opacity: 0;
+#custom-updates_all {
+  background-color: alpha(@background, 0.95);
+  border-radius: 12px;
+  padding: 6px 12px;
+  color: @foreground;
 }
 
+/* ============================================
+   State-Based Styling
+   ============================================ */
+
+/* Battery States */
+#battery.charging,
+#battery.plugged {
+  color: #6bbf7a;
+  padding-right: 10px;
+}
+
+#battery.warning:not(.charging) {
+  color: #e5c07b;
+}
+
+#battery.critical:not(.charging) {
+  background-color: #e06c75;
+  color: #2a3a31;
+  border-radius: 8px;
+}
+
+/* Temperature States */
+#temperature {
+  color: #6bbf7a;
+}
+
+#temperature.warning {
+  color: #e5c07b;
+}
+
+#temperature.critical {
+  color: #e06c75;
+}
+
+/* Network States */
+#network.disconnected {
+  color: #e06c75;
+  padding-right: 16px;
+}
+
+/* Audio States */
+#pulseaudio.muted {
+  color: #e06c75;
+}
+
+/* Update States */
+#custom-updates_all.pending {
+  color: #e06c75;
+}
+
+#custom-updates_all.updated {
+  color: @foreground;
+}
+
+/* Screen Recording */
 #custom-screenrecording-indicator {
   font-size: 10px;
 }
@@ -168,34 +210,22 @@ tooltip {
   padding-left: 10px;
 }
 
-#custom-updates_all {
-  background-color: alpha(@background, 0.95);
-  border-radius: 12px;
-  padding: 6px 12px;
-  color: @foreground;
+/* ============================================
+   Utilities
+   ============================================ */
+.hidden {
+  opacity: 0;
 }
 
-#custom-updates_all.updates-available {
-  color: #e06c75;
+tooltip {
+  padding: 2px;
 }
 
-#custom-updates_all.updates-none {
-  color: @foreground;
-}
+/* ============================================
+   Media Player (custom/media)
+   ============================================ */
 
-#temperature {
-  color: #6bbf7a;     /* normal default */
-}
-
-#temperature.warning {
-  color: #e5c07b;     /* warm (70–84°C) */
-}
-
-#temperature.critical {
-  color: #e06c75;     /* hot (85°C+) */
-}
-
-#bluetooth {
-  padding-left: 10px;
-  padding-right: 12.5px;
+#custom-media {
+  padding-left: 12px;
+  padding-right: 14px;
 }

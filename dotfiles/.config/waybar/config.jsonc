@@ -4,9 +4,21 @@
   "position": "top",
   "spacing": 6,
   "height": 36,
-  "margin":"8 8 0 8",
-  "modules-left": ["custom/omarchy", "clock", "custom/update","custom/updates_all","custom/media"],
-  "modules-center": ["hyprland/workspaces", "custom/screenrecording-indicator"],
+  "margin-top": 8,
+  "margin-left": 2,
+  "margin-right": 2,
+  "margin-bottom": 0,
+  "modules-left": [
+    "custom/omarchy",
+    "clock",
+    "custom/update",
+    "custom/updates_all",
+    "custom/media"
+  ],
+  "modules-center": [
+    "hyprland/workspaces",
+    "custom/screenrecording-indicator"
+  ],
   "modules-right": [
     "group/tray-expander",
     "cpu",
@@ -60,7 +72,7 @@
   "cpu": {
     "interval": 5,
     "format": "󰍛 {usage}%",
-    "on-click": "omarchy-launch-or-focus-tui btop"
+    "on-click": "xdg-terminal-exec --app-id=com.omarchy.Omarchy --title=Omarchy -e btop"
   },
   "temperature": {
     "interval": 5,
@@ -78,7 +90,6 @@
   },
   "clock": {
     "format": "{:%a %d %b %H:%M}",
-    "tooltip": false,
     "on-click": "chromium --app=https://calendar.google.com",
     "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
   },
@@ -91,7 +102,7 @@
     "tooltip-format-wifi": "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
     "tooltip-format-ethernet": "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
     "tooltip-format-disconnected": "Disconnected",
-    "interval": 3,
+    "interval": 5,
     "spacing": 1,
     "on-click": "omarchy-launch-wifi"
   },
@@ -157,29 +168,27 @@
     "on-click": "omarchy-menu system"
   },
   "tray": {
-    "icon-size": 12,
+    "icon-size": 16,
     "spacing": 17
   },
-    "custom/media": {
+  "custom/media": {
     "format": "{text}",
     "escape": true,
     "return-type": "json",
     "max-length": 40,
     "on-click": "playerctl play-pause",
     "on-click-right": "playerctl stop",
-    // "smooth-scrolling-threshold": 10,
-    // "on-scroll-up": "playerctl next",
-    // "on-scroll-down": "playerctl previous",
-    "exec": "$HOME/.config/waybar/scripts/mediaplayer.py 2> /dev/null",
+    "exec": "$HOME/.config/waybar/scripts/mediaplayer.py", // remove 2>/dev/null while testing
+    "restart-interval": 0,
     "tooltip": true,
     "tooltip-format": "{alt}"
   },
     "custom/updates_all": {
   "format": "  {text}",
-  "exec": "/home/bao/.config/waybar/scripts/updates.sh",
-  "on-click": "alacritty -e sudo pacman -Syu && for pid in $(pgrep waybar); do kill -RTMIN+8 $pid; done",
+  "exec": "$HOME/.config/waybar/scripts/updates.sh",
+  "on-click": "$HOME/.config/waybar/scripts/update-system.sh",
   "return-type": "json",
-  "signal": 1,
-  "interval": 300
+  "signal": 8,
+  "interval": 1800
   }
 }

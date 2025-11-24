@@ -1,36 +1,45 @@
-#!/usr/bin/env bash
-# Waybar updates module
-# Requires:
-#   pacman-contrib  (for checkupdates)
-# Optional:
-#   yay or paru     (for AUR updates)
+#!/bin/bash
 
-set -o pipefail
+CACHE_FILE="/tmp/waybar-updates-cache"
+LOCK_FILE="/tmp/waybar-updates.lock"
+CACHE_TIME=330  # 5.5 minutes (longer than the 300s interval)
 
-repo_updates=0
-aur_updates=0
+# Function to cleanup lock on exit
+cleanup() {
+    rm -f "$LOCK_FILE"
+}
+trap cleanup EXIT
 
-# --- Official repo updates (pacman) ---
-if command -v checkupdates &>/dev/null; then
-    # checkupdates returns 2 if no updates, 0 if updates, 1 on error
-    mapfile -t repo_list < <(checkupdates 2>/dev/null)
-    repo_updates=${#repo_list[@]}
+# Check if cache exists and is fresh
+if [ -f "$CACHE_FILE" ]; then
+    CACHE_AGE=$(($(date +%s) - $(stat -c %Y "$CACHE_FILE")))
+    if [ $CACHE_AGE -lt $CACHE_TIME ]; then
+        cat "$CACHE_FILE"
+        exit 0
+    fi
 fi
 
-# --- AUR updates (yay / paru, first found) ---
-if command -v yay &>/dev/null; then
-    aur_updates=$(yay -Qua 2>/dev/null | wc -l)
-elif command -v paru &>/dev/null; then
-    aur_updates=$(paru -Qua 2>/dev/null | wc -l)
+# Try to acquire lock
+if ! mkdir "$LOCK_FILE" 2>/dev/null; then
+    sleep 1
+    if [ -f "$CACHE_FILE" ]; then
+        cat "$CACHE_FILE"
+    else
+        echo '{"text":"...","tooltip":"Checking for updates"}'
+    fi
+    exit 0
 fi
 
-total=$((repo_updates + aur_updates))
+# Check for updates
+updates=$(checkupdates 2>/dev/null | wc -l)
+total=$updates
 
-if (( total > 0 )); then
-    echo "{\"text\":\"$total\",\"class\":\"updates-available\"}"
+# Format output
+if [ $total -eq 0 ]; then
+    output='{"text":"0","tooltip":"System is up to date","class":"updated"}'
 else
-    echo "{\"text\":\"0\",\"class\":\"updates-none\"}"
+    output='{"text":"'$total'","tooltip":"'$total' updates available","class":"pending"}'
 fi
 
-# Signal all waybar instances to refresh this module
-pkill -RTMIN+8 waybar
+# Save and output
+echo "$output" | tee "$CACHE_FILE"

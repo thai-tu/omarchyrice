@@ -1,195 +1,182 @@
 #!/usr/bin/env python3
-import gi
-gi.require_version("Playerctl", "2.0")
-from gi.repository import Playerctl, GLib
-from gi.repository.Playerctl import Player
 import argparse
-import logging
-import sys
-import signal
-import gi
 import json
-import os
-from typing import List
-
-logger = logging.getLogger(__name__)
-
-def signal_handler(sig, frame):
-    logger.info("Received signal to stop, exiting")
-    sys.stdout.write("\n")
-    sys.stdout.flush()
-    # loop.quit()
-    sys.exit(0)
+import subprocess
+import sys
+from typing import List, Optional
 
 
-class PlayerManager:
-    def __init__(self, selected_player=None, excluded_player=[]):
-        self.manager = Playerctl.PlayerManager()
-        self.loop = GLib.MainLoop()
-        self.manager.connect(
-            "name-appeared", lambda *args: self.on_player_appeared(*args))
-        self.manager.connect(
-            "player-vanished", lambda *args: self.on_player_vanished(*args))
+# ---------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------
+def run_playerctl(args: List[str]) -> str:
+    """Run playerctl with given args, return stdout as string or empty on error."""
+    try:
+        out = subprocess.check_output(["playerctl"] + args, stderr=subprocess.DEVNULL)
+        return out.decode("utf-8").strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
 
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-        self.selected_player = selected_player
-        self.excluded_player = excluded_player.split(',') if excluded_player else []
 
-        self.init_players()
+def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]:
+    """Pick the best player name: playing > first available, honour filters."""
+    excluded_set = set(p for p in excluded if p)
 
-    def init_players(self):
-        for player in self.manager.props.player_names:
-            if player.name in self.excluded_player:
-                continue
-            if self.selected_player is not None and self.selected_player != player.name:
-                logger.debug(f"{player.name} is not the filtered player, skipping it")
-                continue
-            self.init_player(player)
+    names_str = run_playerctl(["--list-all"])
+    if not names_str:
+        return None
 
-    def run(self):
-        logger.info("Starting main loop")
-        self.loop.run()
+    names = [n.strip() for n in names_str.splitlines() if n.strip()]
 
-    def init_player(self, player):
-        logger.info(f"Initialize new player: {player.name}")
-        player = Playerctl.Player.new_from_name(player)
-        player.connect("playback-status",
-                       self.on_playback_status_changed, None)
-        player.connect("metadata", self.on_metadata_changed, None)
-        self.manager.manage_player(player)
-        self.on_metadata_changed(player, player.props.metadata)
+    # Apply user filters
+    if selected:
+        names = [n for n in names if n == selected]
+    else:
+        names = [n for n in names if n not in excluded_set]
 
-    def get_players(self) -> List[Player]:
-        return self.manager.props.players
+    if not names:
+        return None
 
-    def write_output(self, text, player):
-        logger.debug(f"Writing output: {text}")
+    # Prefer a player that is currently Playing
+    for name in names:
+        status = run_playerctl(["--player", name, "status"])
+        if status == "Playing":
+            return name
 
-        output = {"text": text,
-                  "class": "custom-" + player.props.player_name,
-                  "alt": player.props.player_name}
+    # Otherwise first available
+    return names[0]
 
-        sys.stdout.write(json.dumps(output) + "\n")
-        sys.stdout.flush()
 
-    def clear_output(self):
+def get_player_info(player_name: str):
+    """
+    Return (status, artist, title, trackid) for a given player.
+    Uses a single metadata call that also includes status.
+    """
+    fmt = "{{status}}|||{{artist}}|||{{title}}|||{{mpris:trackid}}"
+    meta = run_playerctl(["--player", player_name, "metadata", "--format", fmt])
+
+    status, artist, title, trackid = None, None, None, None
+
+    if meta:
+        parts = meta.split("|||")
+        if len(parts) >= 1:
+            status = parts[0].strip() or None
+        if len(parts) >= 2:
+            artist = parts[1].strip() or None
+        if len(parts) >= 3:
+            title = parts[2].strip() or None
+        if len(parts) >= 4:
+            trackid = parts[3].strip() or None
+
+    return status, artist, title, trackid
+
+
+# ---------------------------------------------------------
+# Build output for Waybar
+# ---------------------------------------------------------
+def build_output(
+    player_name: Optional[str],
+    status: Optional[str],
+    artist: Optional[str],
+    title: Optional[str],
+    trackid: Optional[str],
+):
+    """Build the JSON payload Waybar expects."""
+
+    # No player at all → hide module
+    if not player_name:
         sys.stdout.write("\n")
         sys.stdout.flush()
+        sys.exit(0)
 
-    def on_playback_status_changed(self, player, status, _=None):
-        logger.debug(f"Playback status changed for player {player.props.player_name}: {status}")
-        self.on_metadata_changed(player, player.props.metadata)
+    # If we don't have a useful status, or it's neither Playing nor Paused,
+    # hide the module instead of showing a stop icon.
+    if status not in ("Playing", "Paused"):
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        sys.exit(0)
 
-    def get_first_playing_player(self):
-        players = self.get_players()
-        logger.debug(f"Getting first playing player from {len(players)} players")
-        if len(players) > 0:
-            # if any are playing, show the first one that is playing
-            # reverse order, so that the most recently added ones are preferred
-            for player in players[::-1]:
-                if player.props.status == "Playing":
-                    return player
-            # if none are playing, show the first one
-            return players[0]
-        else:
-            logger.debug("No players found")
-            return None
+    # Spotify ad detection
+    is_spotify_ad = (
+        player_name.lower() == "spotify"
+        and trackid is not None
+        and ":ad:" in trackid
+    )
 
-    def show_most_important_player(self):
-        logger.debug("Showing most important player")
-        # show the currently playing player
-        # or else show the first paused player
-        # or else show nothing
-        current_player = self.get_first_playing_player()
-        if current_player is not None:
-            self.on_metadata_changed(current_player, current_player.props.metadata)
-        else:    
-            self.clear_output()
-
-    def on_metadata_changed(self, player, metadata, _=None):
-        logger.debug(f"Metadata changed for player {player.props.player_name}")
-        player_name = player.props.player_name
-        artist = player.get_artist()
-        # artist = artist.replace("&", "&amp;")
-        title = player.get_title()
-        # title = title.replace("&", "&amp;")
-
+    # Track text logic
+    if is_spotify_ad:
+        track_info = "Advertisement"
+    elif artist and title:
+        track_info = f"{title} - {artist}"
+    elif title:
+        track_info = title
+    elif artist:
+        track_info = artist
+    else:
         track_info = ""
-        if player_name == "spotify" and "mpris:trackid" in metadata.keys() and ":ad:" in player.props.metadata["mpris:trackid"]:
-            track_info = "Advertisement"
-        elif artist is not None and title is not None:
-            track_info = f"{title} - {artist}"
-        else:
-            track_info = title
 
-        if track_info:
-            if player.props.status == "Playing":
-                track_info = "  " + track_info
-            else:
-                track_info = "  " + track_info
-        # only print output if no other player is playing
-        current_playing = self.get_first_playing_player()
-        if current_playing is None or current_playing.props.player_name == player.props.player_name:
-            self.write_output(track_info, player)
-        else:
-            logger.debug(f"Other player {current_playing.props.player_name} is playing, skipping")
+    # Icons (Nerd Font)
+    if status == "Playing":
+        icon = ""
+    elif status == "Paused":
+        icon = ""
+    else:
+        # We should not get here because of the earlier guard,
+        # but keep a fallback just in case.
+        icon = ""
 
-    def on_player_appeared(self, _, player):
-        logger.info(f"Player has appeared: {player.name}")
-        if player.name in self.excluded_player:
-            logger.debug(
-                "New player appeared, but it's in exclude player list, skipping")
-            return
-        if player is not None and (self.selected_player is None or player.name == self.selected_player):
-            self.init_player(player)
-        else:
-            logger.debug(
-                "New player appeared, but it's not the selected player, skipping")
+    # If somehow we have no icon and no text, hide the module
+    if not icon and not track_info:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        sys.exit(0)
 
-    def on_player_vanished(self, _, player):
-        logger.info(f"Player {player.props.player_name} has vanished")
-        self.show_most_important_player()
+    text = f"{icon}  {track_info}" if track_info else icon
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
+    css_class = f"custom-{player_name} {status.lower()}" if status else f"custom-{player_name}"
 
-    # Increase verbosity with every occurrence of -v
-    parser.add_argument("-v", "--verbose", action="count", default=0)
+    return {
+        "text": text,
+        "class": css_class.strip(),
+        "alt": player_name,
+    }
 
-    parser.add_argument("-x", "--exclude", "- Comma-separated list of excluded player")
 
-    # Define for which player we"re listening
-    parser.add_argument("--player")
-
-    parser.add_argument("--enable-logging", action="store_true")
-
+# ---------------------------------------------------------
+# CLI and entry point
+# ---------------------------------------------------------
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Waybar media player module (one-shot, polled)",
+        add_help=False,
+    )
+    parser.add_argument("--player", help="Force a specific player name")
+    parser.add_argument(
+        "-x",
+        "--exclude",
+        default="",
+        help="Comma-separated list of players to ignore",
+    )
     return parser.parse_args()
 
 
 def main():
-    arguments = parse_arguments()
+    args = parse_args()
+    excluded = [p.strip() for p in args.exclude.split(",") if p.strip()]
 
-    # Initialize logging
-    if arguments.enable_logging:
-        logfile = os.path.join(os.path.dirname(
-            os.path.realpath(__file__)), "media-player.log")
-        logging.basicConfig(filename=logfile, level=logging.DEBUG,
-                            format="%(asctime)s %(name)s %(levelname)s:%(lineno)d %(message)s")
+    player_name = choose_player(args.player, excluded)
 
-    # Logging is set by default to WARN and higher.
-    # With every occurrence of -v it's lowered by one
-    logger.setLevel(max((3 - arguments.verbose) * 10, 0))
+    # If we didn't find any suitable player, hide the module
+    if not player_name:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        sys.exit(0)
 
-    logger.info("Creating player manager")
-    if arguments.player:
-        logger.info(f"Filtering for player: {arguments.player}")
-    if arguments.exclude:
-        logger.info(f"Exclude player {arguments.exclude}")
+    status, artist, title, trackid = get_player_info(player_name)
+    output = build_output(player_name, status, artist, title, trackid)
 
-    player = PlayerManager(arguments.player, arguments.exclude)
-    player.run()
+    sys.stdout.write(json.dumps(output) + "\n")
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
