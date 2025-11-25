@@ -188,6 +188,6 @@
   "on-click": "$HOME/.config/waybar/scripts/update-system.sh",
   "return-type": "json",
   "signal": 8,
-  "interval": 1800
+  "interval": 300
   }
 }
