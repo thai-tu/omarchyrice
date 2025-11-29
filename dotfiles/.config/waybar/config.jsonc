@@ -89,7 +89,7 @@
     "on-click": "xdg-terminal-exec --app-id=com.omarchy.Omarchy --title=Omarchy -e btop"
   },
   "clock": {
-    "format": "{:%a %d %b %H:%M}",
+    "format": "{:%a %d %b • %I:%M %p}",
     "on-click": "chromium --app=https://calendar.google.com",
     "tooltip": false,
     "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
@@ -129,6 +129,7 @@
   "bluetooth": {
     "format": "",
     "format-disabled": "󰂲",
+    "format-off": "󰂲",
     "format-connected": "󰂱",
     "format-no-controller": "",
     "tooltip-format": "Devices connected: {num_connections}",
