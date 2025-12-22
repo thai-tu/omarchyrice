@@ -178,7 +178,7 @@
     "format": "{}",
     "exec": "$HOME/.config/waybar/scripts/mediaplayer.py",
     "return-type": "json",
-    "interval": 1,
+    "interval": 0.5,
     "max-length": 40,
     "on-click": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh play-pause",
     "on-click-right": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh next",
