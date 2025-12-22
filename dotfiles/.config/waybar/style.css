@@ -83,6 +83,7 @@ window#waybar {
 #custom-expand-icon,
 #custom-media,
 #custom-power,
+#custom-swaync,
 #custom-updates_all {
   background-color: alpha(@background, 0.95);
   border-radius: 12px;

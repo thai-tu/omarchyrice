@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import argparse
+import fcntl
 import json
 import os
 import subprocess
 import sys
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-STATE_FILE = "/tmp/waybar_mpris_state.json"
+STATE_FILE = os.path.expanduser("~/.cache/waybar/mpris_state.json")
 
 
 # ---------------------------------------------------------
@@ -24,22 +25,43 @@ def run_playerctl(args: List[str]) -> str:
 def load_last_player() -> Optional[str]:
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
             data = json.load(f)
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         return data.get("player") or None
     except Exception:
         return None
 
 
 def save_last_player(name: str) -> None:
+    """Persist last chosen player with an atomic write and file locking."""
     try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         with open(STATE_FILE, "w", encoding="utf-8") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
             json.dump({"player": name}, f)
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception:
         # Not critical if this fails
         pass
 
 
-def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]:
+def normalize_player_name(name: str) -> str:
+    """Strip instance numbers for better matching (e.g., spotify.instance123 -> spotify)."""
+    return name.split('.')[0] if '.' in name else name
+
+
+def slugify_class(s: str) -> str:
+    """Make a CSS-safe class token from a player name."""
+    s = (s or "").lower()
+    out = []
+    for ch in s:
+        out.append(ch if ch.isalnum() or ch == '.' else "_")
+    token = "".join(out).strip("_.")
+    return token or "player"
+
+
+def choose_player(selected: Optional[str], excluded: List[str], debug: bool = False) -> Optional[str]:
     """
     Pick the active player with memory:
 
@@ -54,25 +76,43 @@ def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]
 
     names_str = run_playerctl(["--list-all"])
     if not names_str:
+        if debug:
+            print("[debug] playerctl --list-all returned nothing", file=sys.stderr)
         return None
 
     names = [n.strip() for n in names_str.splitlines() if n.strip()]
+    if debug:
+        print(f"[debug] players (raw): {names}", file=sys.stderr)
 
     # Apply user filters
     if selected:
-        names = [n for n in names if n == selected]
+        names = [n for n in names if normalize_player_name(n) == normalize_player_name(selected)]
+        if debug:
+            print(f"[debug] players (forced={selected}): {names}", file=sys.stderr)
     else:
-        names = [n for n in names if n not in excluded_set]
+        names = [n for n in names if normalize_player_name(n) not in excluded_set]
+        if debug and excluded_set:
+            print(f"[debug] players (excluded={sorted(excluded_set)}): {names}", file=sys.stderr)
 
     if not names:
+        if debug:
+            print("[debug] no players after filtering", file=sys.stderr)
         return None
 
     last_player = load_last_player()
-    if last_player not in names:
-        last_player = None
+    # Match by normalized name for better instance handling
+    if last_player:
+        last_normalized = normalize_player_name(last_player)
+        matching = [n for n in names if normalize_player_name(n) == last_normalized]
+        last_player = matching[0] if matching else None
+    
+    if debug:
+        print(f"[debug] last_player (valid): {last_player}", file=sys.stderr)
 
     # Cache statuses once
     statuses = {name: run_playerctl(["--player", name, "status"]) for name in names}
+    if debug:
+        print(f"[debug] statuses: {statuses}", file=sys.stderr)
 
     playing = [n for n in names if statuses.get(n) == "Playing"]
     paused = [n for n in names if statuses.get(n) == "Paused"]
@@ -80,16 +120,12 @@ def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]
     chosen: Optional[str] = None
 
     if playing:
-        # If the last player is still Playing, keep it
         if last_player and statuses.get(last_player) == "Playing":
             chosen = last_player
         else:
-            # New media started → pick the first Playing
             chosen = playing[0]
     else:
-        # No Playing players
         if last_player and statuses.get(last_player) in ("Playing", "Paused"):
-            # Stay on the previous media while it's at least Paused
             chosen = last_player
         elif paused:
             chosen = paused[0]
@@ -99,10 +135,13 @@ def choose_player(selected: Optional[str], excluded: List[str]) -> Optional[str]
     if chosen:
         save_last_player(chosen)
 
+    if debug:
+        print(f"[debug] chosen: {chosen}", file=sys.stderr)
+
     return chosen
 
 
-def get_player_info(player_name: str):
+def get_player_info(player_name: str) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
     Return (status, artist, title, trackid) for a given player.
     Uses a single metadata call that also includes status.
@@ -136,33 +175,23 @@ def build_output(
     title: Optional[str],
     trackid: Optional[str],
 ):
-    """Build the JSON payload Waybar expects."""
-
-    # No player at all → hide module
+    """Build the JSON payload Waybar expects. Returns None if module should be hidden."""
     if not player_name:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        sys.exit(0)
+        return None
 
-    # Normalise status
     normalized_status = status
     if status == "Stopped":
         normalized_status = "Paused"
 
-    # Only show while Playing or Paused
     if normalized_status not in ("Playing", "Paused"):
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        sys.exit(0)
+        return None
 
-    # Spotify ad detection
     is_spotify_ad = (
-        player_name.lower() == "spotify"
+        normalize_player_name(player_name).lower() == "spotify"
         and trackid is not None
-        and ":ad:" in trackid
+        and ":ad:" in trackid.lower()
     )
 
-    # Track text logic
     if is_spotify_ad:
         track_info = "Advertisement"
     elif artist and title:
@@ -174,33 +203,27 @@ def build_output(
     else:
         track_info = ""
 
-    # Icons (Nerd Font)
-    if normalized_status == "Playing":
-        icon = ""
-    elif normalized_status == "Paused":
-        icon = ""
-    else:
-        icon = ""
+    icon = "▶" if normalized_status == "Playing" else "⏸"
 
-    # If somehow we have no icon and no text, hide the module
     if not icon and not track_info:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        sys.exit(0)
+        return None
 
     text = f"{icon}  {track_info}" if track_info else icon
 
-    css_class = (
-        f"custom-{player_name} {normalized_status.lower()}"
-        if normalized_status
-        else f"custom-{player_name}"
-    )
+    # CSS-safe class tokens
+    player_class = slugify_class(player_name)
+    css_class = f"custom-{player_class} {normalized_status.lower()}"
 
     return {
         "text": text,
         "class": css_class.strip(),
         "alt": player_name,
     }
+
+
+def hidden_payload():
+    # Always emit valid JSON so Waybar never chokes
+    return {"text": "", "alt": "", "class": "hidden"}
 
 
 # ---------------------------------------------------------
@@ -218,26 +241,36 @@ def parse_args():
         default="",
         help="Comma-separated list of players to ignore",
     )
+    parser.add_argument("--debug", action="store_true", help="Print debug info to stderr")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    excluded = [p.strip() for p in args.exclude.split(",") if p.strip()]
+    
+    try:
+        excluded = [p.strip() for p in args.exclude.split(",") if p.strip()]
 
-    player_name = choose_player(args.player, excluded)
+        player_name = choose_player(args.player, excluded, debug=args.debug)
 
-    # If we didn't find any suitable player, hide the module
-    if not player_name:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        sys.exit(0)
+        if not player_name:
+            sys.stdout.write(json.dumps(hidden_payload()) + "\n")
+            return
 
-    status, artist, title, trackid = get_player_info(player_name)
-    output = build_output(player_name, status, artist, title, trackid)
+        status, artist, title, trackid = get_player_info(player_name)
+        if args.debug:
+            print(
+                f"[debug] info: player={player_name!r} status={status!r} artist={artist!r} title={title!r} trackid={trackid!r}",
+                file=sys.stderr,
+            )
 
-    sys.stdout.write(json.dumps(output) + "\n")
-    sys.stdout.flush()
+        output = build_output(player_name, status, artist, title, trackid)
+        sys.stdout.write(json.dumps(output if output else hidden_payload()) + "\n")
+    
+    except Exception as e:
+        if args.debug:
+            print(f"[error] {e}", file=sys.stderr)
+        sys.stdout.write(json.dumps(hidden_payload()) + "\n")
 
 
 if __name__ == "__main__":
