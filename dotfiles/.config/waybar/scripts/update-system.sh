@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 
-ghostty -e bash -lc '
-  # Do the actual update
+# Use your preferred terminal
+TERMINAL="${TERMINAL:-ghostty}"
+
+$TERMINAL -e bash -lc '
+  echo "Updating system..."
+  echo ""
+  
   sudo pacman -Syu
-
-  # Clear the Waybar cache so we don't reuse stale JSON
+  
+  # Clear cache and refresh Waybar
   rm -f /tmp/waybar-updates-cache
-
-  # Tell Waybar to refresh the module (signal 8 -> SIGRTMIN+8)
   pkill -SIGRTMIN+8 waybar
+  
+  echo ""
+  echo "Update complete! Press Enter to close..."
+  read
 '

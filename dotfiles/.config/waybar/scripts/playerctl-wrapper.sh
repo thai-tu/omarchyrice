@@ -12,8 +12,15 @@ STATE_FILE = os.path.expanduser("~/.cache/waybar/mpris_state.json")
 
 
 def run_playerctl(args: List[str]) -> str:
+    """Run playerctl with absolute path to avoid PATH issues."""
     try:
-        out = subprocess.check_output(["playerctl"] + args, stderr=subprocess.DEVNULL)
+        # Use absolute path to playerctl
+        playerctl_bin = "/usr/bin/playerctl"
+        if not os.path.exists(playerctl_bin):
+            # Fallback to PATH lookup
+            playerctl_bin = "playerctl"
+        
+        out = subprocess.check_output([playerctl_bin] + args, stderr=subprocess.DEVNULL)
         return out.decode("utf-8").strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return ""
@@ -125,8 +132,13 @@ def try_command(player: str, cmd_args: List[str], debug: bool = False) -> int:
     Run a playerctl command for a specific player, returning the exit code.
     """
     try:
+        # Use absolute path to playerctl
+        playerctl_bin = "/usr/bin/playerctl"
+        if not os.path.exists(playerctl_bin):
+            playerctl_bin = "playerctl"
+        
         res = subprocess.run(
-            ["playerctl", "--player", player] + cmd_args,
+            [playerctl_bin, "--player", player] + cmd_args,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
@@ -138,6 +150,8 @@ def try_command(player: str, cmd_args: List[str], debug: bool = False) -> int:
             print(f"[debug] exit={res.returncode} player={player} cmd={cmd_args}", file=sys.stderr)
         return res.returncode
     except FileNotFoundError:
+        if debug:
+            print(f"[debug] playerctl not found", file=sys.stderr)
         return 127
 
 
@@ -151,12 +165,13 @@ def wait_for_playing(player: str, max_wait: float = 1.0, debug: bool = False) ->
         status = run_playerctl(["--player", player, "status"])
         if status == "Playing":
             if debug:
-                print(f"[debug] player reached Playing state", file=sys.stderr)
+                elapsed = time.time() - start
+                print(f"[debug] player reached Playing state in {elapsed:.2f}s", file=sys.stderr)
             return True
         time.sleep(0.1)
     
     if debug:
-        print(f"[debug] timeout waiting for Playing state", file=sys.stderr)
+        print(f"[debug] timeout waiting for Playing state after {max_wait}s", file=sys.stderr)
     return False
 
 
@@ -182,8 +197,12 @@ def maybe_resume_before_skip(
         print(f"[debug] resuming before {cmd_args[0]}", file=sys.stderr)
 
     try:
+        playerctl_bin = "/usr/bin/playerctl"
+        if not os.path.exists(playerctl_bin):
+            playerctl_bin = "playerctl"
+        
         subprocess.run(
-            ["playerctl", "--player", player, "play"],
+            [playerctl_bin, "--player", player, "play"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -192,7 +211,8 @@ def maybe_resume_before_skip(
         wait_for_playing(player, max_wait=1.0, debug=debug)
         
     except FileNotFoundError:
-        pass
+        if debug:
+            print(f"[debug] playerctl not found during resume", file=sys.stderr)
 
 
 def parse_args():
@@ -250,6 +270,9 @@ def main():
                 print(f"[debug] fallback succeeded with {p}", file=sys.stderr)
             sys.exit(0)
 
+    if args.debug:
+        print(f"[debug] all attempts failed", file=sys.stderr)
+    
     sys.exit(0)
 
 

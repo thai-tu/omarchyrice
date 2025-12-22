@@ -16,7 +16,13 @@ STATE_FILE = os.path.expanduser("~/.cache/waybar/mpris_state.json")
 def run_playerctl(args: List[str]) -> str:
     """Run playerctl with given args, return stdout as string or empty on error."""
     try:
-        out = subprocess.check_output(["playerctl"] + args, stderr=subprocess.DEVNULL)
+        # Use absolute path to playerctl to avoid PATH issues
+        playerctl_bin = "/usr/bin/playerctl"
+        if not os.path.exists(playerctl_bin):
+            # Fallback to PATH lookup
+            playerctl_bin = "playerctl"
+        
+        out = subprocess.check_output([playerctl_bin] + args, stderr=subprocess.DEVNULL)
         return out.decode("utf-8").strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return ""
@@ -203,7 +209,8 @@ def build_output(
     else:
         track_info = ""
 
-    icon = "▶" if normalized_status == "Playing" else "⏸"
+    # Nerd Font icons - play and pause
+    icon = "󰐊" if normalized_status == "Playing" else "󰏤"
 
     if not icon and not track_info:
         return None
@@ -255,6 +262,7 @@ def main():
 
         if not player_name:
             sys.stdout.write(json.dumps(hidden_payload()) + "\n")
+            sys.stdout.flush()
             return
 
         status, artist, title, trackid = get_player_info(player_name)
@@ -266,11 +274,13 @@ def main():
 
         output = build_output(player_name, status, artist, title, trackid)
         sys.stdout.write(json.dumps(output if output else hidden_payload()) + "\n")
+        sys.stdout.flush()
     
     except Exception as e:
         if args.debug:
             print(f"[error] {e}", file=sys.stderr)
         sys.stdout.write(json.dumps(hidden_payload()) + "\n")
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":
