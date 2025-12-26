@@ -5,8 +5,8 @@
   "spacing": 4,
   "height": 40,
   "margin-top": 10,
-  "margin-left": 2,
-  "margin-right": 2,
+  "margin-left": 4,
+  "margin-right": 4,
   "margin-bottom": 0,
 
   "modules-left": [
