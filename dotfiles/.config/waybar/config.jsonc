@@ -2,9 +2,9 @@
   "reload_style_on_change": true,
   "layer": "top",
   "position": "top",
-  "spacing": 6,
-  "height": 36,
-  "margin-top": 8,
+  "spacing": 4,
+  "height": 40,
+  "margin-top": 10,
   "margin-left": 2,
   "margin-right": 2,
   "margin-bottom": 0,
@@ -13,6 +13,7 @@
     "clock",
     "custom/update",
     "custom/updates_all",
+    "idle_inhibitor",
     "custom/media"
   ],
   "modules-center": [
@@ -27,6 +28,7 @@
     "bluetooth",
     "network",
     "pulseaudio",
+    "pulseaudio#input",
     "battery",
     "custom/swaync",
     "custom/power"
@@ -192,5 +194,23 @@
     "return-type": "json",
     "signal": 8,
     "interval": 300
-  }
+  },
+  "pulseaudio#input": {
+    "format": "{format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": "  {volume}%",
+    "tooltip-format": "{source_desc}",
+    "on-click": "omarchy-launch-or-focus-tui wiremix",
+    "on-click-right": "pamixer --default-source -t",
+    "on-scroll-up": "pamixer --default-source -i 5",
+    "on-scroll-down": "pamixer --default-source -d 5",
+    "max-volume": 100
+    },
+    "idle_inhibitor": {
+      "format": "{icon}",
+      "format-icons": {
+      "activated": "󰛊",
+      "deactivated": "󰾫"
+      }
+    }
 }
