@@ -8,6 +8,7 @@
   "margin-left": 2,
   "margin-right": 2,
   "margin-bottom": 0,
+
   "modules-left": [
     "custom/omarchy",
     "clock",
@@ -30,9 +31,9 @@
     "pulseaudio",
     "pulseaudio#input",
     "battery",
-    "custom/swaync",
     "custom/power"
   ],
+
   "hyprland/workspaces": {
     "on-click": "activate",
     "format": "{icon}",
@@ -58,12 +59,21 @@
       "5": []
     }
   },
+
   "custom/omarchy": {
     "format": "<span font='monospace'></span>",
     "on-click": "omarchy-menu",
     "on-click-right": "xdg-terminal-exec",
     "tooltip-format": "Omarchy Menu\n\nSuper + Alt + Space"
   },
+
+  "clock": {
+    "format": "{:%a %d %b • %I:%M %p}",
+    "on-click": "chromium --app=https://calendar.google.com",
+    "tooltip": false,
+    "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
+  },
+
   "custom/update": {
     "format": "",
     "exec": "omarchy-update-available",
@@ -72,18 +82,59 @@
     "signal": 7,
     "interval": 21600
   },
+
+  "custom/updates_all": {
+    "format": "  {text}",
+    "exec": "$HOME/.config/waybar/scripts/updates.sh",
+    "on-click": "$HOME/.config/waybar/scripts/update-system.sh",
+    "return-type": "json",
+    "signal": 8,
+    "interval": 300
+  },
+
+  "custom/screenrecording-indicator": {
+    "on-click": "omarchy-cmd-screenrecord",
+    "exec": "$OMARCHY_PATH/default/waybar/indicators/screen-recording.sh",
+    "signal": 8,
+    "return-type": "json"
+  },
+
+  "group/tray-expander": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 600,
+      "children-class": "tray-group-item"
+    },
+    "modules": [
+      "custom/expand-icon",
+      "tray"
+    ]
+  },
+
+  "custom/expand-icon": {
+    "format": "",
+    "tooltip": false
+  },
+
+  "tray": {
+    "icon-size": 16,
+    "spacing": 17
+  },
+
   "cpu": {
     "interval": 5,
     "format": "󰍛 {usage}%",
     "on-click": "xdg-terminal-exec --app-id=com.omarchy.Omarchy --title=Omarchy -e btop"
   },
+
   "temperature": {
     "interval": 5,
     "format": " {temperatureC}°C",
-    "warning-threshold":70,
-    "critical-threshold":85,
+    "warning-threshold": 70,
+    "critical-threshold": 85,
     "on-click": "xdg-terminal-exec --app-id=com.omarchy.Omarchy --title=Omarchy -e btop"
   },
+
   "memory": {
     "interval": 5,
     "format": "  {used:.1f}G",
@@ -91,12 +142,17 @@
     "tooltip-format": "Used:\t{used:5.2f}GiB\nFree:\t{avail:5.2f}GiB\nTotal:\t{total:5.2f}GiB",
     "on-click": "xdg-terminal-exec --app-id=com.omarchy.Omarchy --title=Omarchy -e btop"
   },
-  "clock": {
-    "format": "{:%a %d %b • %I:%M %p}",
-    "on-click": "chromium --app=https://calendar.google.com",
-    "tooltip": false,
-    "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
+
+  "bluetooth": {
+    "format": "",
+    "format-disabled": "󰂲",
+    "format-off": "󰂲",
+    "format-connected": "󰂱",
+    "format-no-controller": "",
+    "tooltip-format": "Devices connected: {num_connections}",
+    "on-click": "omarchy-launch-bluetooth"
   },
+
   "network": {
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
     "format": "{icon}",
@@ -107,19 +163,43 @@
     "tooltip-format-ethernet": "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
     "tooltip-format-disconnected": "Disconnected",
     "interval": 5,
-    "spacing": 1,
     "on-click": "omarchy-launch-wifi"
   },
+
+  "pulseaudio": {
+    "format": "{icon}  {volume}%",
+    "format-muted": "  {volume}%",
+    "format-icons": {
+      "default": ["", "", ""]
+    },
+    "tooltip-format": "Playing at {volume}%",
+    "scroll-step": 5,
+    "on-click": "omarchy-launch-or-focus-tui wiremix",
+    "on-click-right": "pamixer -t"
+  },
+
+  "pulseaudio#input": {
+    "format": "{format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": "  {volume}%",
+    "tooltip-format": "{source_desc}",
+    "max-volume": 100,
+    "on-click": "omarchy-launch-or-focus-tui wiremix",
+    "on-click-right": "pamixer --default-source -t",
+    "on-scroll-up": "pamixer --default-source -i 5",
+    "on-scroll-down": "pamixer --default-source -d 5"
+  },
+
   "battery": {
     "format": "{icon} {capacity}%",
     "format-discharging": "{icon} {capacity}%",
     "format-charging": "{icon} {capacity}%",
     "format-plugged": "",
+    "format-full": "󰂅 {capacity}%",
     "format-icons": {
       "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
       "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
     },
-    "format-full": "󰂅 {capacity}%",
     "tooltip-format-discharging": "{power:>1.0f}W↓ {capacity}%",
     "tooltip-format-charging": "{power:>1.0f}W↑ {capacity}%",
     "interval": 5,
@@ -129,54 +209,14 @@
       "critical": 10
     }
   },
-  "bluetooth": {
-    "format": "",
-    "format-disabled": "󰂲",
-    "format-off": "󰂲",
-    "format-connected": "󰂱",
-    "format-no-controller": "",
-    "tooltip-format": "Devices connected: {num_connections}",
-    "on-click": "omarchy-launch-bluetooth"
-  },
-  "pulseaudio": {
-    "format": "{icon}  {volume}%",
-    "on-click": "omarchy-launch-or-focus-tui wiremix",
-    "on-click-right": "pamixer -t",
-    "tooltip-format": "Playing at {volume}%",
-    "scroll-step": 5,
-    "format-muted": "  {volume}%",
-    "format-icons": {
-      "default": ["", "", ""]
-    }
-  },
-  "group/tray-expander": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 600,
-      "children-class": "tray-group-item"
-    },
-    "modules": ["custom/expand-icon", "tray"]
-  },
-  "custom/expand-icon": {
-    "format": "",
-    "tooltip": false
-  },
-  "custom/screenrecording-indicator": {
-    "on-click": "omarchy-cmd-screenrecord",
-    "exec": "$OMARCHY_PATH/default/waybar/indicators/screen-recording.sh",
-    "signal": 8,
-    "return-type": "json"
-  },
-  "custom/power":{
+
+  "custom/power": {
     "format": "",
     "tooltip-format": "System Menu",
     "on-click": "omarchy-menu system"
   },
-  "tray": {
-    "icon-size": 16,
-    "spacing": 17
-  },
-"custom/media": {
+
+  "custom/media": {
     "format": "{}",
     "exec": "$HOME/.config/waybar/scripts/mediaplayer.py",
     "return-type": "json",
@@ -187,30 +227,12 @@
     "on-click-middle": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh previous",
     "escape": true
   },
-  "custom/updates_all": {
-    "format": "  {text}",
-    "exec": "$HOME/.config/waybar/scripts/updates.sh",
-    "on-click": "$HOME/.config/waybar/scripts/update-system.sh",
-    "return-type": "json",
-    "signal": 8,
-    "interval": 300
-  },
-  "pulseaudio#input": {
-    "format": "{format_source}",
-    "format-source": " {volume}%",
-    "format-source-muted": "  {volume}%",
-    "tooltip-format": "{source_desc}",
-    "on-click": "omarchy-launch-or-focus-tui wiremix",
-    "on-click-right": "pamixer --default-source -t",
-    "on-scroll-up": "pamixer --default-source -i 5",
-    "on-scroll-down": "pamixer --default-source -d 5",
-    "max-volume": 100
-    },
-    "idle_inhibitor": {
-      "format": "{icon}",
-      "format-icons": {
+
+  "idle_inhibitor": {
+    "format": "{icon}",
+    "format-icons": {
       "activated": "󰛊",
       "deactivated": "󰾫"
-      }
     }
+  }
 }
