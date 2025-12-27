@@ -1,65 +1,42 @@
 #!/usr/bin/env bash
-set -o pipefail
 
 CACHE_FILE="/tmp/waybar-updates-cache"
-LOCK_DIR="/tmp/waybar-updates.lock"
-CACHE_TIME=330  # 5.5 minutes
+CACHE_DURATION=300
 
-cleanup() {
-    rmdir "$LOCK_DIR" 2>/dev/null || true
+check_updates() {
+    local official=0
+    local aur=0
+    
+    # Check official repos
+    if command -v checkupdates &> /dev/null; then
+        official=$(checkupdates 2>/dev/null | wc -l)
+    fi
+    
+    # Check AUR
+    if command -v yay &> /dev/null; then
+        aur=$(yay -Qua 2>/dev/null | wc -l)
+    fi
+    
+    echo "$((official + aur))"
 }
-trap cleanup EXIT INT TERM
 
-# Clean up stale locks older than 10 seconds
-if [ -d "$LOCK_DIR" ]; then
-    LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$LOCK_DIR") ))
-    if [ "$LOCK_AGE" -gt 10 ]; then
-        rmdir "$LOCK_DIR" 2>/dev/null
-    fi
-fi
-
-# Use cache if fresh
-if [ -f "$CACHE_FILE" ]; then
-    CACHE_AGE=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE") ))
-    if [ "$CACHE_AGE" -lt "$CACHE_TIME" ]; then
-        cat "$CACHE_FILE"
-        exit 0
-    fi
-fi
-
-# Try to acquire lock
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    # Another instance is working – wait for its result
-    for i in {1..25}; do
-        if [ -f "$CACHE_FILE" ]; then
-            cat "$CACHE_FILE"
-            exit 0
-        fi
-        sleep 0.2
-    done
-    echo '{"text":"...","tooltip":"Checking for updates","class":"pending"}'
-    exit 0
-fi
-
-# Actually check for updates
-updates_raw=$(checkupdates 2>/dev/null)
-status=$?
-
-if [ "$status" -eq 1 ]; then
-    if [ -f "$CACHE_FILE" ]; then
-        cat "$CACHE_FILE"
+# Use cache if valid
+if [[ -f "$CACHE_FILE" ]]; then
+    cache_age=$(($(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0)))
+    if [[ $cache_age -lt $CACHE_DURATION ]]; then
+        updates=$(cat "$CACHE_FILE")
     else
-        echo '{"text":"?","tooltip":"Unable to check updates","class":"error"}'
+        updates=$(check_updates)
+        echo "$updates" > "$CACHE_FILE"
     fi
-    exit 0
-fi
-
-updates=$(printf "%s\n" "$updates_raw" | sed '/^\s*$/d' | wc -l)
-
-if [ "$updates" -eq 0 ]; then
-    output='{"text":"0","tooltip":"System is up to date","class":"updated"}'
 else
-    output=$(printf '{"text":"%d","tooltip":"%d updates available","class":"pending"}' "$updates" "$updates")
+    updates=$(check_updates)
+    echo "$updates" > "$CACHE_FILE"
 fi
 
-echo "$output" | tee "$CACHE_FILE"
+# Output JSON - always show the number
+if [[ "$updates" -gt 0 ]]; then
+    echo "{\"text\":\"$updates\",\"tooltip\":\"$updates update(s) available\",\"class\":\"pending\"}"
+else
+    echo "{\"text\":\"0\",\"tooltip\":\"System up to date\",\"class\":\"updated\"}"
+fi

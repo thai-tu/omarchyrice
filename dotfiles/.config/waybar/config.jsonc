@@ -84,12 +84,13 @@
   },
 
   "custom/updates_all": {
-    "format": "  {text}",
+    "format": "󰏖  {text}",
     "exec": "$HOME/.config/waybar/scripts/updates.sh",
     "on-click": "$HOME/.config/waybar/scripts/update-system.sh",
     "return-type": "json",
     "signal": 8,
-    "interval": 300
+    "interval": 300,
+    "tooltip": true
   },
 
   "custom/screenrecording-indicator": {

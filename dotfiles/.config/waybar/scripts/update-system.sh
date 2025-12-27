@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
-
-# Use your preferred terminal
 TERMINAL="${TERMINAL:-ghostty}"
 
 $TERMINAL -e bash -lc '
-  echo "Updating system..."
+  echo "=== System Update ==="
   echo ""
   
+  # Update official repos
   sudo pacman -Syu
+  
+  # Update AUR if yay is available
+  if command -v yay &> /dev/null; then
+    echo ""
+    echo "=== Updating AUR packages ==="
+    yay -Sua
+  fi
   
   # Clear cache and refresh Waybar
   rm -f /tmp/waybar-updates-cache
-  pkill -SIGRTMIN+8 waybar
+  pkill -RTMIN+8 waybar
   
   echo ""
   echo "Update complete! Press Enter to close..."
