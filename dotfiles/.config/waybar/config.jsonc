@@ -23,8 +23,8 @@
   ],
   "modules-right": [
     "group/tray-expander",
-    "cpu",
     "temperature",
+    "cpu",
     "memory",
     "bluetooth",
     "network",
