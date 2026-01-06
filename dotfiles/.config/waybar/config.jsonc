@@ -223,9 +223,9 @@
     "return-type": "json",
     "interval": 1,
     "max-length": 40,
-    "on-click": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh play-pause",
-    "on-click-right": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh next",
-    "on-click-middle": "$HOME/.config/waybar/scripts/playerctl-wrapper.sh previous",
+    "on-click": "$HOME/.config/waybar/scripts/playerctl-wrapper.py play-pause",
+    "on-click-right": "$HOME/.config/waybar/scripts/playerctl-wrapper.py next",
+    "on-click-middle": "$HOME/.config/waybar/scripts/playerctl-wrapper.py previous",
     "escape": true
   },
 

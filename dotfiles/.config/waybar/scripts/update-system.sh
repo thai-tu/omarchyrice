@@ -8,10 +8,14 @@ $TERMINAL -e bash -lc '
   # Update official repos
   sudo pacman -Syu
   
-  # Update AUR if yay is available
-  if command -v yay &> /dev/null; then
+  # Update AUR if paru or yay is available
+  if command -v paru &> /dev/null; then
     echo ""
-    echo "=== Updating AUR packages ==="
+    echo "=== Updating AUR packages with paru ==="
+    paru -Sua
+  elif command -v yay &> /dev/null; then
+    echo ""
+    echo "=== Updating AUR packages with yay ==="
     yay -Sua
   fi
   
