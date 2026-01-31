@@ -12,8 +12,8 @@
   "modules-left": [
     "custom/omarchy",
     "clock",
-    "custom/update",
     "custom/updates_all",
+    "custom/update",
     "idle_inhibitor",
     "custom/media"
   ],
@@ -68,7 +68,7 @@
   },
 
   "clock": {
-    "format": "{:%a %d %b • %I:%M %p}",
+    "format": "{:%a %d %b | %I:%M %p}",
     "on-click": "chromium --app=https://calendar.google.com",
     "tooltip": false,
     "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
@@ -171,11 +171,12 @@
     "format": "{icon}  {volume}%",
     "format-muted": "  {volume}%",
     "format-icons": {
+      "headphone": "",
       "default": ["", "", ""]
     },
     "tooltip-format": "Playing at {volume}%",
     "scroll-step": 5,
-    "on-click": "omarchy-launch-or-focus-tui wiremix",
+    "on-click": "omarchy-launch-audio",
     "on-click-right": "pamixer -t"
   },
 

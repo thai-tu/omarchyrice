@@ -136,6 +136,7 @@ window#waybar {
 #bluetooth {
   padding-left: 10px;
   padding-right: 12.5px;
+  color: #81a1c1;
 }
 
 #custom-update {
@@ -222,7 +223,7 @@ window#waybar {
 #custom-screenrecording-indicator.active {
   color: #a55555;
   padding-left: 10px;
-  padding-right: 11px;
+  padding-right: 12px;
 }
 
 /* ============================================
@@ -242,4 +243,21 @@ tooltip {
 #custom-media {
   padding-left: 14px;
   padding-right: 16px;
+}
+
+#custom-voxtype {
+  min-width: 12px;
+  margin: 0 0 0 7.5px;
+}
+
+#custom-voxtype.recording {
+  color: #a55555;
+}
+
+/* ============================================
+   Custom Separator
+   ============================================ */
+.custom-separator {
+  color: @foreground;
+  padding: 0 4px;
 }
